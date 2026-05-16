@@ -1,1 +1,0 @@
-/Users/yulong/conductor/repos/conductor-playground/.claude/skills/gstack/design-html/SKILL.md
