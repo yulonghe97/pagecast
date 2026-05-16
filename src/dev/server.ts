@@ -5,7 +5,7 @@ import { WebSocketServer } from "ws";
 
 import { parseArtifact } from "../core/parser.js";
 import { loadArtifactSource } from "../core/template.js";
-import { loadRegistry } from "../core/registry.js";
+import { loadRegistry, loadStyles } from "../core/registry.js";
 import { validateArtifact, formatError } from "../core/validator.js";
 import { exportToHtml } from "../render/export.js";
 import { buildHydrationBundle, loadComponentMap } from "../render/loader.js";
@@ -40,6 +40,7 @@ export async function startDevServer(opts: DevServerOptions) {
     const html = exportToHtml(doc, {
       components,
       interactiveComponents,
+      extraCss: loadStyles(reg),
       hydrationBundle: hydrationBundle ?? undefined,
       hydrationData: hydrationBundle ? JSON.stringify(payload) : undefined,
       csp: false,
