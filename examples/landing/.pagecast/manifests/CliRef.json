@@ -1,0 +1,28 @@
+{
+  "name": "CliRef",
+  "import": "./components/CliRef.tsx",
+  "description": "Two-column command reference: monospace command on the left, plain-English description on the right.",
+  "propsSchema": {
+    "type": "object",
+    "required": ["title", "commands"],
+    "additionalProperties": false,
+    "properties": {
+      "eyebrow": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
+      "commands": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["name", "desc"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "args": { "type": "string" },
+            "desc": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

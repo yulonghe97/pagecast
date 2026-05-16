@@ -1,0 +1,29 @@
+{
+  "name": "Numbers",
+  "import": "./components/Numbers.tsx",
+  "description": "Stats band: 2–5 cell strip with one big number per cell, a mono label, and a short body sub.",
+  "propsSchema": {
+    "type": "object",
+    "required": ["items"],
+    "additionalProperties": false,
+    "properties": {
+      "eyebrow": { "type": "string" },
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "required": ["value", "label", "sub"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": "string", "minLength": 1 },
+            "accent": { "type": "boolean" },
+            "label": { "type": "string", "minLength": 1 },
+            "sub": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
