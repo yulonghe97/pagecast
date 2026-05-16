@@ -20,7 +20,7 @@ code: |
   ::/StatusGrid
 links:
   - label: "github"
-    href: "https://github.com/"
+    href: "https://github.com/yulonghe97/pagecast"
   - label: "npm"
     href: "https://npmjs.com/package/pagecast"
   - label: "spec"
@@ -124,6 +124,6 @@ commands:
 ::Footer
 source: "rendered by pagecast"
 sourceLabel: "view source on github"
-sourceUrl: "https://github.com/pagecast/pagecast"
+sourceUrl: "https://github.com/yulonghe97/pagecast"
 version: "v0.1 · MIT"
 ::/Footer
