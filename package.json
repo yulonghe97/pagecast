@@ -1,0 +1,34 @@
+{
+  "name": "pagecast",
+  "version": "0.1.0",
+  "description": "Cast structured artifacts into self-contained HTML pages. Markdown + typed component blocks for AI-generated content.",
+  "type": "module",
+  "bin": {
+    "pagecast": "./bin/pagecast.mjs"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "test": "tsx --test tests/parser.test.ts tests/validator.test.ts tests/registry.test.ts tests/render.test.tsx tests/template.test.ts tests/cli.test.ts",
+    "pagecast": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "chokidar": "^4.0.1",
+    "esbuild": "^0.24.0",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "marked": "^14.1.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
