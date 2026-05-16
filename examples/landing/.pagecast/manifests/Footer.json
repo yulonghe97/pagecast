@@ -1,0 +1,15 @@
+{
+  "name": "Footer",
+  "import": "./components/Footer.tsx",
+  "description": "Three-cell footer: brand wordmark, source line with optional link, version.",
+  "propsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "source": { "type": "string" },
+      "sourceLabel": { "type": "string" },
+      "sourceUrl": { "type": "string" },
+      "version": { "type": "string" }
+    }
+  }
+}

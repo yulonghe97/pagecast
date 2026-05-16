@@ -4,11 +4,15 @@ Cast structured artifacts into self-contained HTML pages.
 
 Write a React component. Add a JSON Schema for its props. Your agents fill data into `.artifact.md` files (Markdown plus typed component blocks); PageCast validates against the schema, renders through your component, and writes one self-contained HTML file.
 
+PageCast is inspired by the agent HTML artifact workflow: once a plan, review, or report gets long, people read a browser page more readily than a Markdown file.
+
+Direct agent-written HTML has sharp edges in team workflows. You cannot validate it against product fields. You cannot keep the layout consistent across runs. Review diffs get noisy, and agents can break markup with a small edit.
+
+PageCast keeps the browser-page workflow while changing what agents write. Agents fill Markdown plus typed YAML blocks. Trusted local components render the page, enforce schemas, carry the styling, and opt into interactivity.
+
 Best for repeat outputs: weekly plans, launch readiness, QA reports, status pages. The agent fills the data. Your components own the look.
 
 Not MDX. Source files can't execute JavaScript.
-
-> Spec: [`SPEC.md`](./SPEC.md)
 
 Engine only. You supply the components.
 
@@ -124,11 +128,25 @@ npm test
 
 ```
 src/
-  cli/       CLI entry
-  core/      parser, registry, validator, template
-  render/    React tree, export, esbuild loader, hydration
-  dev/       dev server with file watcher and WS hot reload
-tests/       unit, integration, CLI
+  cli/                  CLI entry
+  core/                 parser, registry, validator, template
+  render/               React tree, export, esbuild loader, hydration
+  dev/                  dev server with file watcher and WS hot reload
+tests/                  unit, integration, CLI
+examples/
+  landing/              dogfood landing page — built with PageCast
+    .pagecast/          components, manifests, styles
+    landing.artifact.md the source
+    landing.html        the cast output
+```
+
+## Examples
+
+The landing page in `examples/landing/` is built with PageCast itself. Eight components, one artifact, one self-contained HTML file out. The Playground component is interactive — edit the artifact in the browser and watch the cast update live.
+
+```bash
+npm run pagecast -- export examples/landing/landing.artifact.md --out examples/landing/landing.html
+open examples/landing/landing.html
 ```
 
 ## What's next

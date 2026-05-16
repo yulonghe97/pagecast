@@ -79,3 +79,15 @@ export function listComponents(reg: Registry): ComponentManifest[] {
     a.name.localeCompare(b.name)
   );
 }
+
+/** Concatenate every .css file under `.pagecast/styles/`, sorted by name. */
+export function loadStyles(reg: Registry): string {
+  const stylesDir = join(reg.root, "styles");
+  if (!existsSync(stylesDir)) return "";
+  const parts: string[] = [];
+  for (const f of readdirSync(stylesDir).sort()) {
+    if (!f.endsWith(".css")) continue;
+    parts.push(readFileSync(join(stylesDir, f), "utf8"));
+  }
+  return parts.join("\n");
+}

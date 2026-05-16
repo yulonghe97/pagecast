@@ -1,0 +1,47 @@
+{
+  "name": "Hero",
+  "import": "./components/Hero.tsx",
+  "description": "Two-column hero. Left: eyebrow, headline, sub, install command, link row. Right: artifact code block. Optional 'works with' agent logo strip below.",
+  "propsSchema": {
+    "type": "object",
+    "required": ["title", "command", "code"],
+    "additionalProperties": false,
+    "properties": {
+      "eyebrow": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
+      "sub": { "type": "string" },
+      "command": { "type": "string", "minLength": 1 },
+      "codeFile": { "type": "string" },
+      "code": { "type": "string", "minLength": 1 },
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["label", "href"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "type": "string", "minLength": 1 },
+            "href": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "worksWithLabel": { "type": "string" },
+      "worksWith": {
+        "type": "array",
+        "maxItems": 8,
+        "items": {
+          "type": "object",
+          "required": ["name", "logo"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "logo": {
+              "type": "string",
+              "enum": ["claude", "cursor", "codex", "windsurf", "mcp", "shell"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

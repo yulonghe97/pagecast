@@ -1,0 +1,20 @@
+{
+  "name": "Playground",
+  "import": "./components/Playground.tsx",
+  "description": "Interactive playground. Editable artifact source, live render, structured validation errors. Tabs to inspect the component and manifest source.",
+  "interactive": true,
+  "propsSchema": {
+    "type": "object",
+    "required": ["title", "initialArtifact", "componentCode", "manifestCode"],
+    "additionalProperties": false,
+    "properties": {
+      "eyebrow": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
+      "sub": { "type": "string" },
+      "initialArtifact": { "type": "string", "minLength": 1 },
+      "componentCode": { "type": "string", "minLength": 1 },
+      "manifestCode": { "type": "string", "minLength": 1 },
+      "hint": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Agents",
+  "import": "./components/Agents.tsx",
+  "description": "Agent-focused section. Two columns: terminal showing the validate → fix loop on one side, copy + bullet points on the other.",
+  "propsSchema": {
+    "type": "object",
+    "required": ["title", "points", "terminal"],
+    "additionalProperties": false,
+    "properties": {
+      "eyebrow": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
+      "sub": { "type": "string" },
+      "termFile": { "type": "string" },
+      "terminal": { "type": "string", "minLength": 1 },
+      "points": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {
+          "type": "object",
+          "required": ["title", "body"],
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string", "minLength": 1 },
+            "body": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

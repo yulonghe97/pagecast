@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 
 import { parseArtifact } from "../core/parser.js";
 import { loadArtifactSource } from "../core/template.js";
-import { loadRegistry, listComponents } from "../core/registry.js";
+import { loadRegistry, listComponents, loadStyles } from "../core/registry.js";
 import { validateArtifact, formatError } from "../core/validator.js";
 import { exportToHtml } from "../render/export.js";
 import { buildHydrationBundle, loadComponentMap } from "../render/loader.js";
@@ -132,6 +132,7 @@ async function cmdExport(positional: string[], flags: Record<string, string | bo
   const html = exportToHtml(doc, {
     components,
     interactiveComponents,
+    extraCss: loadStyles(reg),
     hydrationBundle: hydrationBundle ?? undefined,
     hydrationData: hydrationBundle ? JSON.stringify(payload) : undefined,
   });
