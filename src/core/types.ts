@@ -42,7 +42,24 @@ export interface ComponentManifest {
   slots?: Record<string, { type: "markdown"; required?: boolean }>;
   propsSchema?: Record<string, unknown>;
   examples?: string[];
+  /**
+   * Declarative prop derivation. Each key is a target prop name; the value
+   * names a built-in resolver (`from`) and the prop holding its lookup key
+   * (`via`). Resolution runs after parse and before validate, so derived
+   * values participate in schema checks like any author-written prop.
+   *
+   * Built-in resolvers:
+   *   - "file":              read text from a file path relative to the artifact
+   *   - "componentSource":   read text of a registered component's source file
+   *   - "componentManifest": serialize a registered component's manifest as JSON
+   */
+  derived?: Record<string, DerivedSource>;
 }
+
+export type DerivedSource =
+  | { from: "file"; via: string }
+  | { from: "componentSource"; via: string }
+  | { from: "componentManifest"; via: string };
 
 export interface ValidationError {
   file?: string;

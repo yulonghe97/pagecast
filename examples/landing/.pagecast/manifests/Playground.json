@@ -1,20 +1,35 @@
 {
   "name": "Playground",
   "import": "./components/Playground.tsx",
-  "description": "Interactive playground. Editable artifact source, live render, structured validation errors. Tabs to inspect the component and manifest source.",
+  "description": "Interactive playground. Editable artifact source, live render, structured validation errors. Tabs to inspect the component and manifest source pulled from the registry.",
   "interactive": true,
   "propsSchema": {
     "type": "object",
-    "required": ["title", "initialArtifact", "componentCode", "manifestCode"],
+    "required": ["title", "demo", "show"],
     "additionalProperties": false,
     "properties": {
       "eyebrow": { "type": "string" },
       "title": { "type": "string", "minLength": 1 },
       "sub": { "type": "string" },
-      "initialArtifact": { "type": "string", "minLength": 1 },
-      "componentCode": { "type": "string", "minLength": 1 },
-      "manifestCode": { "type": "string", "minLength": 1 },
-      "hint": { "type": "string" }
+      "hint": { "type": "string" },
+      "demo": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Path (relative to the artifact) of a real .artifact.md file used as the initial editable source."
+      },
+      "show": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Name of a registered component whose .tsx source and manifest are displayed in the side tabs."
+      },
+      "initialArtifact": { "type": "string" },
+      "componentCode": { "type": "string" },
+      "manifestCode": { "type": "string" }
     }
+  },
+  "derived": {
+    "initialArtifact": { "from": "file", "via": "demo" },
+    "componentCode": { "from": "componentSource", "via": "show" },
+    "manifestCode": { "from": "componentManifest", "via": "show" }
   }
 }

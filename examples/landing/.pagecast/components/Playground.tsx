@@ -4,8 +4,15 @@ export interface PlaygroundProps {
   eyebrow?: string;
   title: string;
   sub?: string;
+  /** Path to the demo artifact file, declared by the author. */
+  demo: string;
+  /** Registered component whose source/manifest fill the side tabs. */
+  show: string;
+  /** Filled by the engine from `demo` via the manifest's `derived` map. */
   initialArtifact: string;
+  /** Filled by the engine from `show` via the manifest's `derived` map. */
   componentCode: string;
+  /** Filled by the engine from `show` via the manifest's `derived` map. */
   manifestCode: string;
   hint?: string;
 }
@@ -135,6 +142,8 @@ export default function Playground({
   eyebrow,
   title,
   sub,
+  demo,
+  show,
   initialArtifact,
   componentCode,
   manifestCode,
@@ -143,6 +152,9 @@ export default function Playground({
   const [activeTab, setActiveTab] = useState<"artifact" | "component" | "manifest">("artifact");
   const [source, setSource] = useState(initialArtifact);
   const result = useMemo(() => parseStatusGrid(source), [source]);
+  const demoLabel = demo.split("/").pop() ?? "demo.artifact.md";
+  const componentLabel = `${show}.tsx`;
+  const manifestLabel = `${show}.json`;
 
   return (
     <section className="section playground">
@@ -163,7 +175,7 @@ export default function Playground({
               onClick={() => setActiveTab("artifact")}
             >
               <span className="playground__tab-dot" aria-hidden="true" />
-              plan.artifact.md
+              {demoLabel}
             </button>
             <button
               type="button"
@@ -172,7 +184,7 @@ export default function Playground({
               className={`playground__tab${activeTab === "component" ? " playground__tab--active" : ""}`}
               onClick={() => setActiveTab("component")}
             >
-              StatusGrid.tsx
+              {componentLabel}
             </button>
             <button
               type="button"
@@ -181,7 +193,7 @@ export default function Playground({
               className={`playground__tab${activeTab === "manifest" ? " playground__tab--active" : ""}`}
               onClick={() => setActiveTab("manifest")}
             >
-              StatusGrid.json
+              {manifestLabel}
             </button>
             <span className="playground__tab-spacer" />
             <span className="playground__tab-label">EDITABLE</span>

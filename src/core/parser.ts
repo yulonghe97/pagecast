@@ -10,11 +10,18 @@ import {
 
 /**
  * Grammar (informal):
- *   ::Name           open
- *   <YAML props>     props (until first blank line, close, or next open)
- *   <blank line>     slot separator (only if slot body follows)
- *   <slot body>      markdown + nested components
- *   ::/Name          close (always named)
+ *   ::Name             open
+ *   <YAML props>       props (until first blank line, close, marker, or next open)
+ *   <blank line>       anonymous slot separator (only if slot body follows)
+ *   <slot body>        markdown + nested components
+ *   ---slotName---     named slot marker (alternative to anonymous slot)
+ *   <slot body>        raw text; fence-stripped if exactly one fenced code block
+ *   ::/Name            close (always named)
+ *
+ * Modes are mutually exclusive per block: if any `---name---` marker appears
+ * before the matching close, the block is in named-slot mode and all content
+ * between markers is captured as raw string props. Otherwise it falls back
+ * to anonymous-slot mode (blank-line separator + recursive child blocks).
  */
 export function parseArtifact(source: string, file?: string): ArtifactDocument {
   const fm = matter(source);
@@ -48,6 +55,7 @@ const OPEN_LINE = /^::([A-Za-z][A-Za-z0-9_]*)\s*$/;
 const CLOSE_NAMED = /^::\/([A-Za-z][A-Za-z0-9_]*)\s*$/;
 const BARE_CLOSE = /^::\s*$/;
 const BLANK_LINE = /^\s*$/;
+const SLOT_MARKER = /^---([A-Za-z][A-Za-z0-9_-]*)---\s*$/;
 
 function parseBlocks(
   body: string,
@@ -152,6 +160,151 @@ function readComponentBlock(
   const name = openMatch[1]!;
   state.i++; // consume the open line
 
+  // Decide mode by peeking ahead until the matching close at column 0.
+  // If any `---slotName---` appears before that close, use named-slot mode.
+  // (We only scan for the FIRST `::/<name>` — named-slot bodies are raw text,
+  //  so nested same-name components are not supported in this mode.)
+  const namedSlotPlan = planNamedSlots(state, name, openLineIndex);
+  if (namedSlotPlan) {
+    return readNamedSlotBlock(state, name, openLineIndex, namedSlotPlan);
+  }
+
+  return readAnonymousSlotBlock(state, name, openLineIndex);
+}
+
+interface NamedSlotPlan {
+  /** Index of the matching `::/Name` line in state.lines. */
+  closeIdx: number;
+  /** Sorted line indices (in state.lines) of every `---slotName---` marker. */
+  markerIdxs: number[];
+}
+
+function planNamedSlots(
+  state: ReaderState,
+  name: string,
+  openLineIndex: number
+): NamedSlotPlan | null {
+  // Rule: a block is in named-slot mode iff the FIRST non-blank line after
+  // its prop region is a `---slotName---` marker. Markers that appear later
+  // (in markdown content or inside a nested ::Other block) do not flip the
+  // mode — they are just text in whatever slot/anonymous body they sit in.
+  //
+  // Walk the prop region first: any non-blank, non-marker, non-open,
+  // non-close line is treated as YAML props. Stop on the first interesting
+  // line, then skip blanks, then look at what we landed on.
+
+  let scanI = state.i;
+
+  while (scanI < state.lines.length) {
+    const ln = state.lines[scanI] ?? "";
+    if (
+      BLANK_LINE.test(ln) ||
+      SLOT_MARKER.test(ln) ||
+      OPEN_LINE.test(ln) ||
+      CLOSE_NAMED.test(ln)
+    ) {
+      break;
+    }
+    scanI++;
+  }
+
+  while (scanI < state.lines.length && BLANK_LINE.test(state.lines[scanI] ?? "")) {
+    scanI++;
+  }
+
+  if (scanI >= state.lines.length) return null;
+  if (!SLOT_MARKER.test(state.lines[scanI] ?? "")) return null;
+
+  // Named-slot mode confirmed. Collect every marker until the matching close.
+  // Inside the body we never recurse, so a stray `::/${name}` literally
+  // inside slot text would prematurely close — this is the documented
+  // sharp edge for named-slot mode.
+  const markerIdxs: number[] = [];
+  for (let j = scanI; j < state.lines.length; j++) {
+    const ln = state.lines[j] ?? "";
+    const closeMatch = ln.match(CLOSE_NAMED);
+    if (closeMatch && closeMatch[1] === name) {
+      return { closeIdx: j, markerIdxs };
+    }
+    if (SLOT_MARKER.test(ln)) markerIdxs.push(j);
+  }
+
+  // Walked past EOF without finding the matching close.
+  throw parseError(
+    state,
+    openLineIndex,
+    `Missing ::/${name} — component opened but never closed`
+  );
+}
+
+function readNamedSlotBlock(
+  state: ReaderState,
+  name: string,
+  openLineIndex: number,
+  plan: NamedSlotPlan
+): ComponentBlock {
+  const { closeIdx, markerIdxs } = plan;
+  const firstMarker = markerIdxs[0]!;
+
+  // Prop region: lines between open and the first marker, trailing blanks stripped.
+  const propLines: string[] = [];
+  for (let j = state.i; j < firstMarker; j++) {
+    propLines.push(state.lines[j] ?? "");
+  }
+  while (propLines.length > 0 && BLANK_LINE.test(propLines[propLines.length - 1]!)) {
+    propLines.pop();
+  }
+  const yamlProps = parseYamlProps(propLines.join("\n"), name, state, openLineIndex);
+
+  // Each marker → named slot, captured as raw text.
+  const slotProps: Record<string, string> = {};
+  for (let k = 0; k < markerIdxs.length; k++) {
+    const markerIdx = markerIdxs[k]!;
+    const markerMatch = SLOT_MARKER.exec(state.lines[markerIdx] ?? "")!;
+    const slotName = markerMatch[1]!;
+    const bodyStart = markerIdx + 1;
+    const bodyEnd = k + 1 < markerIdxs.length ? markerIdxs[k + 1]! : closeIdx;
+
+    const bodyLines: string[] = [];
+    for (let j = bodyStart; j < bodyEnd; j++) {
+      bodyLines.push(state.lines[j] ?? "");
+    }
+    while (bodyLines.length > 0 && BLANK_LINE.test(bodyLines[0]!)) bodyLines.shift();
+    while (bodyLines.length > 0 && BLANK_LINE.test(bodyLines[bodyLines.length - 1]!)) {
+      bodyLines.pop();
+    }
+    const text = stripFence(bodyLines.join("\n"));
+
+    if (slotName in slotProps) {
+      throw parseError(
+        state,
+        markerIdx,
+        `Duplicate slot "${slotName}" in ${name} — each slot may appear only once`
+      );
+    }
+    slotProps[slotName] = text;
+  }
+
+  // Slot props override YAML props of the same key. Validator catches the
+  // semantic mismatch if both were specified; we don't second-guess here.
+  const props = { ...yamlProps, ...slotProps };
+
+  state.i = closeIdx + 1;
+
+  return {
+    kind: "component",
+    name,
+    props,
+    slot: [],
+    loc: locOf(state, openLineIndex),
+  };
+}
+
+function readAnonymousSlotBlock(
+  state: ReaderState,
+  name: string,
+  openLineIndex: number
+): ComponentBlock {
   // Collect prop YAML lines until first blank line (= slot starts) or
   // the matching close. Encountering another `::Name` or `::/Other`
   // before a blank line is an error (props must be a contiguous block).
@@ -222,6 +375,21 @@ function readComponentBlock(
     slot,
     loc: locOf(state, openLineIndex),
   };
+}
+
+/**
+ * Strip a single surrounding fenced code block. The body must start with
+ * ```optional-lang on its own line and end with ``` on its own line, with
+ * no interior fence lines. Anything else is returned unchanged.
+ */
+function stripFence(text: string): string {
+  const lines = text.split("\n");
+  if (lines.length < 2) return text;
+  if (!/^```[\w-]*\s*$/.test(lines[0]!)) return text;
+  if (!/^```\s*$/.test(lines[lines.length - 1]!)) return text;
+  const middle = lines.slice(1, -1);
+  if (middle.some((ln) => /^```/.test(ln))) return text;
+  return middle.join("\n");
 }
 
 function parseYamlProps(

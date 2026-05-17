@@ -89,16 +89,34 @@ execute JavaScript, or define arbitrary runtime behavior.
 artifact-file    := frontmatter? block*
 frontmatter      := "---" NL yaml NL "---" NL
 block            := markdown-block | component-block
-component-block  := open-line yaml-props? (blank-line slot-body)? close-line
+component-block  := open-line yaml-props? body? close-line
+body             := anonymous-slot | named-slot+
+anonymous-slot   := blank-line slot-body
+named-slot       := slot-marker text-body
+slot-marker      := "---" name "---" NL
 open-line        := "::" name NL
 close-line       := "::/" name NL
 blank-line       := /^\s*$/ NL
 ```
 
 `yaml-props` is parsed as YAML and must resolve to a mapping.
-`slot-body` is parsed recursively as artifact blocks. The grammar has
-**one** way to pass props (YAML) and **one** way to close a component
-(`::/Name`). There are no inline arguments and no `---` slot separator.
+`slot-body` (anonymous) is parsed recursively as artifact blocks.
+`text-body` (named) is captured as raw text and assigned to a string
+prop with the same name as the marker.
+
+A block is in **named-slot mode** iff the first non-blank line after
+its prop region is a `---name---` marker. Otherwise it is in
+**anonymous-slot mode**. The two modes are mutually exclusive per block.
+
+Markers that appear later in an anonymous slot body — inside markdown
+content or inside a nested `::Other` block — do **not** flip the outer
+mode. They are just text in whichever body they sit in. This means an
+author can write a `---tldr---` line as a Markdown thematic-break-style
+divider inside an anonymous slot, and the parser will leave it alone.
+
+The grammar has **one** way to pass props (YAML), **one** way to close
+a component (`::/Name`), and **two** ways to give a component body
+(anonymous slot for nested blocks, named slots for raw text props).
 
 Example:
 
@@ -124,19 +142,75 @@ items:
 
 Props are written as a YAML mapping on the lines immediately after the
 open line, with no blank line between the open line and the first prop.
-A blank line ends the props block and begins the optional slot body.
+A blank line ends the props block and begins the optional slot body —
+*unless* the block uses named slots, in which case blank lines before
+the first `---name---` marker are treated as whitespace.
 
 A few rules content authors and agents should know:
 
-1. **YAML is the only prop syntax.** There are no inline arguments.
+1. **YAML is the primary prop syntax.** Inline values, simple objects,
+   and arrays all go in YAML on the open line side. Named slots are an
+   alternative source for *string* props that benefit from being
+   written as block text (long prose, code samples).
 2. **Strings containing `:` must be quoted.** YAML treats an unquoted
    `:` as a mapping delimiter. Write
    `description: "Use blocks: status, risks"` rather than
    `description: Use blocks: status, risks`. The parser reports this
    case with a fix suggestion when it fires.
 3. **Nested components must be separated from props by a blank line.**
-   This is what tells the parser "the YAML is done; what follows is
-   slot content." If you forget the blank line the parser will say so.
+   In anonymous-slot mode this is what tells the parser "the YAML is
+   done; what follows is slot content." In named-slot mode, nested
+   components go inside an anonymous slot — named slots themselves
+   capture raw text, not artifact blocks.
+
+## Named slots
+
+A named slot lets a long string prop be written as a block of text
+rather than crammed into a YAML scalar. The marker is `---name---` on
+its own line at column 0. Everything between that marker and the next
+marker (or `::/Name` close) is captured as a string and assigned to
+the prop named `name`.
+
+If the captured text is exactly one fenced code block — i.e. the body
+starts with ```` ```lang ```` and ends with ```` ``` ```` and contains
+no other fence lines — the fence markers are stripped and only the
+fenced content becomes the prop value. This lets authors keep editor
+syntax highlighting on the source while the component receives clean
+code.
+
+Example:
+
+```md
+::Playground
+title: "Try it"
+hint: "edit the status — set ready to critical"
+
+---initialArtifact---
+​```
+::StatusGrid
+items:
+  - label: Docs
+    status: ready
+::/StatusGrid
+​```
+
+---componentCode---
+​```tsx
+export default function StatusGrid({ items }) { ... }
+​```
+::/Playground
+```
+
+Rules:
+
+1. A given slot name may appear at most once per block.
+2. Named-slot mode disables the legacy "blank line ends props" rule
+   *for that block*. YAML props may span blank lines until the first
+   marker.
+3. Slot content is raw text. To embed nested artifact components, use
+   anonymous-slot mode instead.
+4. A slot name that does not correspond to a prop in the manifest will
+   surface as a normal `additionalProperties` validation error.
 
 ## Frontmatter
 
@@ -176,6 +250,52 @@ A manifest describes the public authoring contract for a component:
   }
 }
 ```
+
+## Derived props
+
+A manifest may declare props that are filled in by the engine from
+external sources rather than written by hand in the artifact. This
+keeps an artifact free of duplicated content (component source, demo
+data) that already lives elsewhere as a single source of truth.
+
+The manifest's optional `derived` field maps a target prop name to a
+resolver descriptor:
+
+```json
+{
+  "name": "Playground",
+  "propsSchema": { ... },
+  "derived": {
+    "initialArtifact": { "from": "file",              "via": "demo" },
+    "componentCode":   { "from": "componentSource",   "via": "show" },
+    "manifestCode":    { "from": "componentManifest", "via": "show" }
+  }
+}
+```
+
+`from` selects a built-in resolver; `via` names the prop holding its
+lookup key. Three resolvers ship in v0.1:
+
+| `from`                | Lookup key (`via`) | Returns |
+|-----------------------|--------------------|---------|
+| `file`                | relative path under the artifact directory | file contents as a string |
+| `componentSource`     | registered component name     | source of `.pagecast/components/<name>.tsx` |
+| `componentManifest`   | registered component name     | the manifest serialized as pretty JSON |
+
+The `file` resolver enforces the trust boundary: absolute paths are
+rejected, and any relative path whose normalized resolution escapes
+the artifact's directory is rejected. The engine refuses to be a
+generic file reader on behalf of an artifact prop value, because
+artifact content is untrusted.
+
+Derivation runs after parse and before validation, so derived values
+participate in schema checks like any other prop. Errors (missing
+file, path-escape, unknown component, missing `via` prop) are
+reported in the same shape as validation errors and tied to the
+source line of the host block.
+
+If a prop appears both in the artifact YAML and in `derived`, the
+derived value wins — the manifest decided that prop is computed.
 
 ## Error model
 
