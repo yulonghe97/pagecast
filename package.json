@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsx scripts/build.ts",
-    "test": "tsx --test tests/parser.test.ts tests/validator.test.ts tests/registry.test.ts tests/render.test.tsx tests/template.test.ts tests/cli.test.ts",
+    "test": "tsx --test tests/parser.test.ts tests/validator.test.ts tests/registry.test.ts tests/render.test.tsx tests/template.test.ts tests/cli.test.ts tests/derive.test.ts",
     "pagecast": "tsx src/cli/index.ts"
   },
   "dependencies": {

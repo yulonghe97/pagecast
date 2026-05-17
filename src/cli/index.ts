@@ -6,6 +6,7 @@ import { parseArtifact } from "../core/parser.js";
 import { loadArtifactSource } from "../core/template.js";
 import { loadRegistry, listComponents, loadStyles } from "../core/registry.js";
 import { validateArtifact, formatError } from "../core/validator.js";
+import { applyDerivations } from "../core/derive.js";
 import { exportToHtml } from "../render/export.js";
 import { buildHydrationBundle, loadComponentMap } from "../render/loader.js";
 import { collectHydrationPayload } from "../render/hydration.js";
@@ -96,7 +97,8 @@ function cmdValidate(positional: string[], flags: Record<string, string | boolea
   const reg = loadRegistry({ cwd: dirname(abs) });
   const source = loadArtifactSource(abs);
   const doc = parseArtifact(source, abs);
-  const errors = validateArtifact(doc, reg);
+  const derive = applyDerivations(doc, reg, abs);
+  const errors = [...derive.errors, ...validateArtifact(doc, reg)];
   if (flags["json"]) {
     process.stdout.write(JSON.stringify({ ok: errors.length === 0, errors }, null, 2) + "\n");
     process.exit(errors.length === 0 ? 0 : 1);
@@ -117,7 +119,8 @@ async function cmdExport(positional: string[], flags: Record<string, string | bo
   const reg = loadRegistry({ cwd: dirname(abs) });
   const source = loadArtifactSource(abs);
   const doc = parseArtifact(source, abs);
-  const errors = validateArtifact(doc, reg);
+  const derive = applyDerivations(doc, reg, abs);
+  const errors = [...derive.errors, ...validateArtifact(doc, reg)];
   if (errors.length > 0) {
     console.error(`✗ ${file} — ${errors.length} error${errors.length === 1 ? "" : "s"}; cannot export.`);
     for (const e of errors) console.error(formatError(e));

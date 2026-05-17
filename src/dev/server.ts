@@ -7,6 +7,7 @@ import { parseArtifact } from "../core/parser.js";
 import { loadArtifactSource } from "../core/template.js";
 import { loadRegistry, loadStyles } from "../core/registry.js";
 import { validateArtifact, formatError } from "../core/validator.js";
+import { applyDerivations } from "../core/derive.js";
 import { exportToHtml } from "../render/export.js";
 import { buildHydrationBundle, loadComponentMap } from "../render/loader.js";
 import { collectHydrationPayload } from "../render/hydration.js";
@@ -23,7 +24,8 @@ export async function startDevServer(opts: DevServerOptions) {
     const reg = loadRegistry({ cwd: dirname(abs) });
     const source = loadArtifactSource(abs);
     const doc = parseArtifact(source, abs);
-    const errors = validateArtifact(doc, reg);
+    const derive = applyDerivations(doc, reg, abs);
+    const errors = [...derive.errors, ...validateArtifact(doc, reg)];
     if (errors.length > 0) {
       const lines = errors.map((e) => formatError(e)).join("\n\n");
       return errorPage(lines);

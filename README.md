@@ -16,6 +16,16 @@ Not MDX. Source files can't execute JavaScript.
 
 Engine only. You supply the components.
 
+## Why not MDX
+
+MDX upgrades Markdown into JSX: authors can `import` modules, write expressions, define components inline. That serves humans writing docs. It serves agents badly. There is no schema validation, no machine-readable errors, no trust boundary. When the agent writes the wrong thing you get "compile error in your JSX" and a stack trace.
+
+PageCast is the inverse trade. Artifact files are **pure data**, components are **pre-approved code**. Every prop is checked against a JSON Schema before render. Errors carry `file:line:column` and the exact prop path; an agent fixes one line, retries, converges in a few turns. Exported HTML carries a strict CSP and ships as one file you can email a stakeholder without auditing.
+
+The one-liner: **MDX gives authors a programming language. PageCast gives authors a form.** Forms are less expressive — and agents fill them out correctly.
+
+Use MDX when humans write the content and you want full expressive freedom inside Markdown. Use PageCast when agents write the content and you want every output to be validatable, portable, and safe by default.
+
 ## The shape
 
 An agent writes:
@@ -102,6 +112,44 @@ plans/cycle-14.artifact.md:14:1
 
 Unknown component names get a Levenshtein suggestion from the registry.
 
+## References, not copies
+
+When the content a component needs already exists somewhere — a file on disk, another component's source, the output of a tool the agent ran — the artifact should point to it, not duplicate it. A manifest declares which props are *derived* from external sources; the engine resolves them between parse and validate, so derived values participate in schema checks like any author-written prop.
+
+```json
+{
+  "name": "Playground",
+  "derived": {
+    "initialArtifact": { "from": "file",              "via": "demo" },
+    "componentCode":   { "from": "componentSource",   "via": "show" },
+    "manifestCode":    { "from": "componentManifest", "via": "show" }
+  }
+}
+```
+
+```yaml
+::Playground
+demo: ./demos/status-grid.artifact.md
+show: StatusGrid
+::/Playground
+```
+
+Three built-in resolvers in v0.1: `file` (text from a file path), `componentSource` (a registered component's `.tsx`), `componentManifest` (a registered component's JSON). The set is closed by design — no plugin surface, no executable manifests, no escape from the trust model.
+
+The interesting use case is reports built from tool output. An agent runs `npm test --json > artifacts/tests.json`, runs `gh issue list --json > artifacts/issues.json`, then writes a short artifact that references the files instead of pasting their contents:
+
+```yaml
+---
+title: Cycle 14 launch readiness
+---
+
+::TestReport     source: ./artifacts/tests.json     ::/TestReport
+::OpenIssues     source: ./artifacts/issues.json    ::/OpenIssues
+::CommitLog      since: { from: git, via: "lastTag" } ::/CommitLog
+```
+
+The agent writes context and pointers. The engine does the dereferencing. The artifact stays small, the data stays current, and there is no copy of anything that already has a single source of truth somewhere.
+
 ## Rendering
 
 - `export`: server-render with `react-dom/server`, inline the CSS, write one HTML file with no external assets.
@@ -122,7 +170,7 @@ Unknown component names get a Levenshtein suggestion from the registry.
 npm test
 ```
 
-38 tests over parser, validator, registry, renderer, templates, CLI. Inline fixture components; no bundled library.
+58 tests over parser, validator, registry, renderer, templates, derive, CLI. Inline fixture components; no bundled library.
 
 ## Layout
 

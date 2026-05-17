@@ -10,7 +10,7 @@ Run from the repo root.
 
 ```bash
 npm install              # one-time
-npm test                 # 42 tests via node:test + tsx
+npm test                 # 58 tests via node:test + tsx
 npm run pagecast -- validate examples/landing/landing.artifact.md
 npm run pagecast -- export examples/landing/landing.artifact.md --out examples/landing/landing.html
 npm run pagecast -- dev examples/landing/landing.artifact.md      # live preview on :4321
@@ -51,10 +51,11 @@ Hydration is opt-in per component (`interactive: true` in the manifest). Static 
 
 ## Sharp edges
 
-1. **Blank lines end YAML props.** A `|` literal block that contains a blank line silently truncates the prop. Pass multiline strings as `"foo\nbar"` escape format. Tracked for v0.2.
-2. **Registry walks upward** from the artifact file's directory to find `.pagecast/`. An artifact in `examples/landing/` finds `examples/landing/.pagecast/`. Don't move `.pagecast/` without keeping it on the lookup path.
-3. **Hydration bundles every user component.** Even one `interactive: true` manifest triggers a full bundle of every `.pagecast/components/*` file. Page weight jumps by ~170 KB (React + components). Engine optimization is on the v0.2 list.
-4. **CSP is strict by default.** Export emits `connect-src 'none'`, `script-src 'sha256-<hash>'` (only when there's a hydration script), `style-src 'unsafe-inline'`. No external assets. Anything that needs network won't load.
+1. **Blank lines end YAML props in anonymous-slot mode.** A `|` literal block that contains a blank line silently truncates the prop. Workaround: use named slots (`---propName---` markers) for long strings — they capture raw text and accept fenced code blocks. The YAML escape form (`"foo\nbar"`) still works for short cases.
+2. **Named-slot bodies are raw text only.** No nested artifact components inside a named slot, and the parser closes the block at the first `::/<OuterName>` it sees — so don't put `::/<sameName>` literally inside a named slot. Use anonymous-slot mode if you need nested components.
+3. **Registry walks upward** from the artifact file's directory to find `.pagecast/`. An artifact in `examples/landing/` finds `examples/landing/.pagecast/`. Don't move `.pagecast/` without keeping it on the lookup path.
+4. **Hydration bundles every user component.** Even one `interactive: true` manifest triggers a full bundle of every `.pagecast/components/*` file. Page weight jumps by ~170 KB (React + components). Engine optimization is on the v0.2 list.
+5. **CSP is strict by default.** Export emits `connect-src 'none'`, `script-src 'sha256-<hash>'` (only when there's a hydration script), `style-src 'unsafe-inline'`. No external assets. Anything that needs network won't load.
 
 ## Testing
 
@@ -62,7 +63,7 @@ Hydration is opt-in per component (`interactive: true` in the manifest). Static 
 npm test
 ```
 
-42 tests across parser, validator, registry, renderer, template, CLI. Inline fixture components in `tests/render.test.tsx`. No bundled component library.
+58 tests across parser, validator, registry, renderer, template, CLI. Inline fixture components in `tests/render.test.tsx`. No bundled component library.
 
 Add tests next to the file you're changing when the change is behavior. Don't add tests for refactors. Run the suite before opening a PR.
 

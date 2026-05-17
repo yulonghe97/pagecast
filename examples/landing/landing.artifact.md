@@ -62,9 +62,8 @@ eyebrow: "TRY IT LIVE"
 title: "Edit the artifact. Watch it cast."
 sub: "Change a label. Change a status to something the schema doesn't allow. Errors appear with line numbers — the same format the CLI emits in your terminal."
 hint: "try editing the status — change \"ready\" to \"critical\" and watch the error appear"
-initialArtifact: "::StatusGrid\nitems:\n  - label: Docs\n    status: ready\n  - label: Billing\n    status: blocked\n  - label: Webhooks\n    status: warning\n::/StatusGrid"
-componentCode: "export default function StatusGrid({ items }) {\n  return (\n    <div className=\"status-grid\">\n      {items.map((it) => (\n        <div key={it.label} className={`row row--${it.status}`}>\n          <span>{it.label}</span>\n          <span className=\"tag\">{it.status}</span>\n        </div>\n      ))}\n    </div>\n  );\n}"
-manifestCode: "{\n  \"name\": \"StatusGrid\",\n  \"import\": \"./components/StatusGrid.tsx\",\n  \"propsSchema\": {\n    \"type\": \"object\",\n    \"required\": [\"items\"],\n    \"properties\": {\n      \"items\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"properties\": {\n            \"label\":  { \"type\": \"string\" },\n            \"status\": { \"enum\": [\"ready\", \"blocked\", \"warning\"] }\n          }\n        }\n      }\n    }\n  }\n}"
+demo: ./.pagecast/demos/status-grid.artifact.md
+show: StatusGrid
 ::/Playground
 
 ::Agents
