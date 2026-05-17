@@ -226,3 +226,84 @@ test("P-24 named slot missing matching close points at open line", () => {
   const src = `::Demo\n---body---\nhi\n`;
   assert.throws(() => parseArtifact(src), /Missing ::\/Demo/);
 });
+
+test("P-25 anonymous slot containing a nested component with named slots stays anonymous", () => {
+  // Regression: planNamedSlots used to scan past nested blocks and flip the
+  // outer to named-slot mode if any `---marker---` appeared anywhere before
+  // ::/Outer. The outer here is anonymous; its slot body contains an Inner
+  // that legitimately uses named slots.
+  const src =
+    `::Outer\n` +
+    `\n` +
+    `::Inner\n` +
+    `---body---\n` +
+    `hello\n` +
+    `::/Inner\n` +
+    `::/Outer\n`;
+  const doc = parseArtifact(src);
+  const outer = doc.blocks[0];
+  assert.equal(outer?.kind, "component");
+  if (outer?.kind === "component") {
+    assert.equal(outer.name, "Outer");
+    assert.deepEqual(outer.props, {});
+    assert.equal(outer.slot.length, 1);
+    const inner = outer.slot[0];
+    assert.equal(inner?.kind, "component");
+    if (inner?.kind === "component") {
+      assert.equal(inner.name, "Inner");
+      assert.equal(inner.props.body, "hello");
+    }
+  }
+});
+
+test("P-26 anonymous slot whose markdown body contains a `---word---` line stays anonymous", () => {
+  // Regression: the literal token `---tldr---` looks like a SLOT_MARKER but
+  // here it sits inside markdown content of an anonymous slot. The outer
+  // block should not flip to named-slot mode.
+  const src =
+    `::Section\n` +
+    `title: Hi\n` +
+    `\n` +
+    `# Hello\n` +
+    `\n` +
+    `---tldr---\n` +
+    `A short paragraph.\n` +
+    `::/Section\n`;
+  const doc = parseArtifact(src);
+  const c = doc.blocks[0];
+  assert.equal(c?.kind, "component");
+  if (c?.kind === "component") {
+    assert.equal(c.name, "Section");
+    assert.deepEqual(c.props, { title: "Hi" });
+    assert.ok(c.slot.length >= 1, "anonymous slot body should not be empty");
+    // The slot body is parsed as artifact blocks; the markdown block should
+    // include the heading and the paragraph that follows the `---tldr---`.
+    const md = c.slot.find((b) => b.kind === "markdown");
+    assert.ok(md, "expected at least one markdown block in the slot");
+    if (md?.kind === "markdown") {
+      assert.match(md.text, /# Hello/);
+      assert.match(md.text, /A short paragraph\./);
+    }
+  }
+});
+
+test("P-27 named-slot mode still triggers when first body line after blanks is a marker", () => {
+  // Companion to P-25/P-26: confirms the new rule does not accidentally
+  // disable named-slot mode when the author writes the canonical shape
+  // (props, blank line, first marker).
+  const src =
+    `::Demo\n` +
+    `title: T\n` +
+    `\n` +
+    `---body---\n` +
+    `hello\n` +
+    `::/Demo\n`;
+  const doc = parseArtifact(src);
+  const c = doc.blocks[0];
+  assert.equal(c?.kind, "component");
+  if (c?.kind === "component") {
+    assert.equal(c.props.title, "T");
+    assert.equal(c.props.body, "hello");
+    assert.equal(c.slot.length, 0);
+  }
+});

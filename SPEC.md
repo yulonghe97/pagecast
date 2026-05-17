@@ -104,9 +104,15 @@ blank-line       := /^\s*$/ NL
 `text-body` (named) is captured as raw text and assigned to a string
 prop with the same name as the marker.
 
-A block is in **named-slot mode** iff at least one `---name---` marker
-appears before the matching `::/Name`. Otherwise it is in
+A block is in **named-slot mode** iff the first non-blank line after
+its prop region is a `---name---` marker. Otherwise it is in
 **anonymous-slot mode**. The two modes are mutually exclusive per block.
+
+Markers that appear later in an anonymous slot body — inside markdown
+content or inside a nested `::Other` block — do **not** flip the outer
+mode. They are just text in whichever body they sit in. This means an
+author can write a `---tldr---` line as a Markdown thematic-break-style
+divider inside an anonymous slot, and the parser will leave it alone.
 
 The grammar has **one** way to pass props (YAML), **one** way to close
 a component (`::/Name`), and **two** ways to give a component body
@@ -272,15 +278,21 @@ lookup key. Three resolvers ship in v0.1:
 
 | `from`                | Lookup key (`via`) | Returns |
 |-----------------------|--------------------|---------|
-| `file`                | path relative to the artifact | file contents as a string |
+| `file`                | relative path under the artifact directory | file contents as a string |
 | `componentSource`     | registered component name     | source of `.pagecast/components/<name>.tsx` |
 | `componentManifest`   | registered component name     | the manifest serialized as pretty JSON |
 
+The `file` resolver enforces the trust boundary: absolute paths are
+rejected, and any relative path whose normalized resolution escapes
+the artifact's directory is rejected. The engine refuses to be a
+generic file reader on behalf of an artifact prop value, because
+artifact content is untrusted.
+
 Derivation runs after parse and before validation, so derived values
 participate in schema checks like any other prop. Errors (missing
-file, unknown component, missing `via` prop) are reported in the same
-shape as validation errors and tied to the source line of the host
-block.
+file, path-escape, unknown component, missing `via` prop) are
+reported in the same shape as validation errors and tied to the
+source line of the host block.
 
 If a prop appears both in the artifact YAML and in `derived`, the
 derived value wins — the manifest decided that prop is computed.

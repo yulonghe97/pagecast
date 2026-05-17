@@ -220,6 +220,61 @@ test("D-07 derived prop overrides an author-written value", () => {
   }
 });
 
+test("D-09 file resolver rejects absolute paths", () => {
+  const { hostPath, root } = fixture({
+    hostManifest: {
+      name: "Host",
+      import: "./components/Host.tsx",
+      derived: { content: { from: "file", via: "demo" } },
+    },
+    hostBody: `::Host\ndemo: /etc/passwd\n::/Host\n`,
+  });
+  const reg = loadRegistry({ cwd: root });
+  const doc = parseArtifact(readFileSync(hostPath, "utf8"), hostPath);
+  const { errors } = applyDerivations(doc, reg, hostPath);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0]!.message, /absolute paths are not allowed/);
+  assert.equal(errors[0]!.received, "/etc/passwd");
+});
+
+test("D-10 file resolver rejects `..` escapes outside the artifact directory", () => {
+  const { hostPath, root } = fixture({
+    hostManifest: {
+      name: "Host",
+      import: "./components/Host.tsx",
+      derived: { content: { from: "file", via: "demo" } },
+    },
+    hostBody: `::Host\ndemo: ../../../../etc/passwd\n::/Host\n`,
+  });
+  const reg = loadRegistry({ cwd: root });
+  const doc = parseArtifact(readFileSync(hostPath, "utf8"), hostPath);
+  const { errors } = applyDerivations(doc, reg, hostPath);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0]!.message, /path escapes the artifact directory/);
+});
+
+test("D-11 file resolver accepts relative paths inside a subdirectory", () => {
+  // Sanity: legitimate use (the Playground case) still works after the
+  // containment check.
+  const { hostPath, root } = fixture({
+    demoBody: "ok",
+    hostManifest: {
+      name: "Host",
+      import: "./components/Host.tsx",
+      derived: { content: { from: "file", via: "demo" } },
+    },
+    hostBody: `::Host\ndemo: ./.pagecast/demos/demo.artifact.md\n::/Host\n`,
+  });
+  const reg = loadRegistry({ cwd: root });
+  const doc = parseArtifact(readFileSync(hostPath, "utf8"), hostPath);
+  const { errors } = applyDerivations(doc, reg, hostPath);
+  assert.deepEqual(errors, []);
+  const c = doc.blocks[0];
+  if (c?.kind === "component") {
+    assert.equal(c.props.content, "ok");
+  }
+});
+
 test("D-08 manifests without `derived` produce no errors and no mutation", () => {
   const { hostPath, root } = fixture({
     hostManifest: {

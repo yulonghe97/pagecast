@@ -184,26 +184,57 @@ function planNamedSlots(
   name: string,
   openLineIndex: number
 ): NamedSlotPlan | null {
+  // Rule: a block is in named-slot mode iff the FIRST non-blank line after
+  // its prop region is a `---slotName---` marker. Markers that appear later
+  // (in markdown content or inside a nested ::Other block) do not flip the
+  // mode — they are just text in whatever slot/anonymous body they sit in.
+  //
+  // Walk the prop region first: any non-blank, non-marker, non-open,
+  // non-close line is treated as YAML props. Stop on the first interesting
+  // line, then skip blanks, then look at what we landed on.
+
+  let scanI = state.i;
+
+  while (scanI < state.lines.length) {
+    const ln = state.lines[scanI] ?? "";
+    if (
+      BLANK_LINE.test(ln) ||
+      SLOT_MARKER.test(ln) ||
+      OPEN_LINE.test(ln) ||
+      CLOSE_NAMED.test(ln)
+    ) {
+      break;
+    }
+    scanI++;
+  }
+
+  while (scanI < state.lines.length && BLANK_LINE.test(state.lines[scanI] ?? "")) {
+    scanI++;
+  }
+
+  if (scanI >= state.lines.length) return null;
+  if (!SLOT_MARKER.test(state.lines[scanI] ?? "")) return null;
+
+  // Named-slot mode confirmed. Collect every marker until the matching close.
+  // Inside the body we never recurse, so a stray `::/${name}` literally
+  // inside slot text would prematurely close — this is the documented
+  // sharp edge for named-slot mode.
   const markerIdxs: number[] = [];
-  for (let j = state.i; j < state.lines.length; j++) {
+  for (let j = scanI; j < state.lines.length; j++) {
     const ln = state.lines[j] ?? "";
     const closeMatch = ln.match(CLOSE_NAMED);
     if (closeMatch && closeMatch[1] === name) {
-      return markerIdxs.length > 0 ? { closeIdx: j, markerIdxs } : null;
+      return { closeIdx: j, markerIdxs };
     }
     if (SLOT_MARKER.test(ln)) markerIdxs.push(j);
   }
-  // No matching close found at all. If markers exist, raise the missing-close
-  // error here so it's attributed to the open line; otherwise let the
-  // anonymous-slot path emit its own error.
-  if (markerIdxs.length > 0) {
-    throw parseError(
-      state,
-      openLineIndex,
-      `Missing ::/${name} — component opened but never closed`
-    );
-  }
-  return null;
+
+  // Walked past EOF without finding the matching close.
+  throw parseError(
+    state,
+    openLineIndex,
+    `Missing ::/${name} — component opened but never closed`
+  );
 }
 
 function readNamedSlotBlock(

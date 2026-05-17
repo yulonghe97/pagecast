@@ -10,7 +10,7 @@ Run from the repo root.
 
 ```bash
 npm install              # one-time
-npm test                 # 58 tests via node:test + tsx
+npm test                 # 64 tests via node:test + tsx
 npm run pagecast -- validate examples/landing/landing.artifact.md
 npm run pagecast -- export examples/landing/landing.artifact.md --out examples/landing/landing.html
 npm run pagecast -- dev examples/landing/landing.artifact.md      # live preview on :4321
@@ -63,7 +63,7 @@ Hydration is opt-in per component (`interactive: true` in the manifest). Static 
 npm test
 ```
 
-58 tests across parser, validator, registry, renderer, template, CLI. Inline fixture components in `tests/render.test.tsx`. No bundled component library.
+64 tests across parser, validator, registry, renderer, template, CLI. Inline fixture components in `tests/render.test.tsx`. No bundled component library.
 
 Add tests next to the file you're changing when the change is behavior. Don't add tests for refactors. Run the suite before opening a PR.
 

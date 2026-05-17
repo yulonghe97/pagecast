@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { dirname, resolve, isAbsolute } from "node:path";
+import { dirname, resolve, isAbsolute, sep } from "node:path";
 
 import {
   ArtifactDocument,
@@ -76,7 +76,27 @@ function resolve1(
   }
 
   if (source.from === "file") {
-    const abs = isAbsolute(key) ? key : resolve(artifactDir, key);
+    // Artifact content is untrusted (AGENTS.md). Reject absolute paths and
+    // any relative path whose resolved form escapes the artifact's directory.
+    // Authors who legitimately want to reference files outside the artifact
+    // tree should move the artifact or restructure — the engine refuses to
+    // be a generic file reader on behalf of artifact prop values.
+    if (isAbsolute(key)) {
+      return {
+        ok: false,
+        message: `absolute paths are not allowed for "from: file" (received: ${key})`,
+        received: key,
+      };
+    }
+    const abs = resolve(artifactDir, key);
+    const rootBoundary = artifactDir.endsWith(sep) ? artifactDir : artifactDir + sep;
+    if (abs !== artifactDir && !abs.startsWith(rootBoundary)) {
+      return {
+        ok: false,
+        message: `path escapes the artifact directory: ${key}`,
+        received: key,
+      };
+    }
     if (!existsSync(abs)) {
       return { ok: false, message: `file not found: ${key}`, received: key };
     }

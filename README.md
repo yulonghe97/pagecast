@@ -134,21 +134,27 @@ show: StatusGrid
 ::/Playground
 ```
 
-Three built-in resolvers in v0.1: `file` (text from a file path), `componentSource` (a registered component's `.tsx`), `componentManifest` (a registered component's JSON). The set is closed by design — no plugin surface, no executable manifests, no escape from the trust model.
+Three built-in resolvers in v0.1: `file` (text from a path under the artifact's directory), `componentSource` (a registered component's `.tsx`), `componentManifest` (a registered component's JSON). The set is closed by design — no plugin surface, no executable manifests, no escape from the trust model. `file` rejects absolute paths and any relative path that escapes the artifact directory.
 
 The interesting use case is reports built from tool output. An agent runs `npm test --json > artifacts/tests.json`, runs `gh issue list --json > artifacts/issues.json`, then writes a short artifact that references the files instead of pasting their contents:
 
-```yaml
+```
 ---
 title: Cycle 14 launch readiness
 ---
 
-::TestReport     source: ./artifacts/tests.json     ::/TestReport
-::OpenIssues     source: ./artifacts/issues.json    ::/OpenIssues
-::CommitLog      since: { from: git, via: "lastTag" } ::/CommitLog
+::TestReport
+source: ./artifacts/tests.json
+::/TestReport
+
+::OpenIssues
+source: ./artifacts/issues.json
+::/OpenIssues
 ```
 
-The agent writes context and pointers. The engine does the dereferencing. The artifact stays small, the data stays current, and there is no copy of anything that already has a single source of truth somewhere.
+Each component's manifest declares the indirection (`derived: { report: { from: "file", via: "source" } }`); the engine reads the file at validate-time and the component receives a clean string prop. The agent writes context and pointers. The engine does the dereferencing. The artifact stays small, the data stays current, and there is no copy of anything that already has a single source of truth somewhere.
+
+Future resolvers will plausibly cover `git` (commit metadata), `package` (package.json fields), and `glob` (file lists for index pages). v0.1 ships only the three above.
 
 ## Rendering
 
@@ -170,7 +176,7 @@ The agent writes context and pointers. The engine does the dereferencing. The ar
 npm test
 ```
 
-58 tests over parser, validator, registry, renderer, templates, derive, CLI. Inline fixture components; no bundled library.
+64 tests over parser, validator, registry, renderer, templates, derive, CLI. Inline fixture components; no bundled library.
 
 ## Layout
 
